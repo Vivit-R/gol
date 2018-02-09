@@ -9,6 +9,9 @@ int numcols;
 void create_universe(int rows, int cols);
 void free_universe();
 void panic(char *errstring);
+void soup();
+void birth(struct cell *born);
+void death(struct cell *died);
 
 
 struct cell **universe;
@@ -22,6 +25,7 @@ int main(int argc, char **argv) {
     /* TODO: ASSIGN NUMROW AND NUMCOLS TO ARGUMENTS GIVEN IN 
        PARAMTERS */
     create_universe(40, 14);
+    soup();
     free_universe();
 }
 
@@ -46,10 +50,49 @@ void create_universe(int rows, int cols) {
             universe[i][j].liveneighbors = 0;
             universe[i][j].ycoord = i;
             universe[i][j].xcoord = j;
-            
         }
     }
+}
 
+/**
+  Iterates through the universe and births or kills cells randomly.
+ */
+void soup() {
+    for (int i = 0; i < numrows; i++) {
+        for (int j = 0; j < numcols; j++) {
+            if (rand() % 2) {
+                if (universe[i][j].is_alive)
+                    death(&(universe[i][j]));
+                else
+                    birth(&(universe[i][j]));
+            }
+        }
+    }
+}
+
+/**
+  Runs a single generation.
+  */
+void generation() {
+    for (int i = 0; i < numrows; i++) {
+        for (int j = 0; j < numrows; j++) {
+            /* If a dead cell has exactly 3 live neighbors, it comes to
+               life.  If a live cell has fewer than 2 or more than 3 
+               live neighbors, it dies.  This is the simplest 
+               formulation of Conway's rules. */
+            switch (universe[i][j].liveneighbors) {
+                case 3:
+                    if (!universe[i][j].is_alive) 
+                        birth(&(universe[i][j]));
+                case 2:
+                    break;
+                default:
+                    if (universe[i][j].is_alive) 
+                        death(&(universe[i][j]));
+                    break;
+            }
+        }
+    }
 }
 
 /**
@@ -68,9 +111,8 @@ void free_universe() {
   @param incremented A pointer to the cell to be incremented.
   */
 void incr_liveneighbors(struct cell *incremented) {
-    if (incremented->liveneighbors == 8) {
+    if (incremented->liveneighbors == 8)
         panic("Trying bring number of living neighbors above eight");
-    }
 
     incremented->liveneighbors++;
 }
@@ -80,9 +122,8 @@ void incr_liveneighbors(struct cell *incremented) {
   @param decremented A pointer to the cell to be decremented.
   */
 void decr_liveneighbors(struct cell *decremented) {
-    if (decremented->liveneighbors == 0) {
+    if (decremented->liveneighbors == 0)
         panic("Trying bring number of living neighbors below zero");
-    }
 
     decremented->liveneighbors--;
 }
@@ -116,6 +157,9 @@ void check_neighbors(struct cell *center, void (*f)(struct cell *)) {
         }
     }
 }
+
+/* Whenever a cell dies or comes to life, the cells around it all have
+   their liveneighbors fields updated accordingly. */
 
 /**
   A cell comes to life!
