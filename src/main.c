@@ -6,7 +6,7 @@
 int numrows;
 int numcols;
 
-void create_universe(int rows, int cols);
+void create_universe();
 void free_universe();
 void panic(char *errstring);
 void soup();
@@ -23,9 +23,21 @@ struct cell **universe;
   @param argv the arguments given
   */
 int main(int argc, char **argv) {
-    /* TODO: ASSIGN NUMROW AND NUMCOLS TO ARGUMENTS GIVEN IN 
-       PARAMTERS */
-    create_universe(24, 80);
+    numrows = DEFAULT_ROWS;
+    numcols = DEFAULT_COLS;
+
+    switch (argc) {
+        case 3:
+            numcols = atoi(argv[1]);
+        case 2:
+            numrows = atoi(argv[0]);
+            break;
+
+        default:
+            break;
+    }
+
+    create_universe(numrows, numcols);
     initscr();
 
     mvprintw(0, 0, "Press any key to progress the simulation by one "
@@ -44,6 +56,7 @@ int main(int argc, char **argv) {
         refresh();
     } while (input != 'q' && input != 'Q');
 
+    delscreen();
     endwin();
     free_universe();
 
@@ -52,13 +65,8 @@ int main(int argc, char **argv) {
 
 /**
   Allocates and initializes memory for the universe.
-  @param rows The number of rows of cells in the universe.
-  @param cols The number of columns of cells in the universe.
   */
-void create_universe(int rows, int cols) {
-    numrows = rows;
-    numcols = cols;
-
+void create_universe() {
     universe = malloc(numrows * (sizeof (void *)));
     for (int i = 0; i < numrows; i++) {
         universe[i] = malloc(numcols * (sizeof (struct cell)));
@@ -70,6 +78,7 @@ void create_universe(int rows, int cols) {
             universe[i][j].liveneighbors = 0;
             universe[i][j].ycoord = i;
             universe[i][j].xcoord = j;
+            universe[i][j].fate = 0;
         }
     }
 }
