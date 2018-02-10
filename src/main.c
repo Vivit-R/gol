@@ -12,6 +12,7 @@ void panic(char *errstring);
 void soup();
 void birth(struct cell *born);
 void death(struct cell *died);
+void generation();
 
 
 struct cell **universe;
@@ -24,9 +25,29 @@ struct cell **universe;
 int main(int argc, char **argv) {
     /* TODO: ASSIGN NUMROW AND NUMCOLS TO ARGUMENTS GIVEN IN 
        PARAMTERS */
-    create_universe(40, 14);
+    create_universe(24, 80);
+    initscr();
+
+    mvprintw(0, 0, "Press any key to progress the simulation by one "
+            "generation, or press Q to quit.\n");
+    refresh();
+    char input = getch();
+
+    clear();
     soup();
+
+    refresh();
+
+    do {
+        input = getch();
+        generation();
+        refresh();
+    } while (input != 'q' && input != 'Q');
+
+    endwin();
     free_universe();
+
+    printf("Thank you for playing the Game of Life.\n");
 }
 
 /**
@@ -46,7 +67,6 @@ void create_universe(int rows, int cols) {
     for (int i = 0; i < numrows; i++) {
         for (int j = 0; j < numcols; j++) {
             universe[i][j].is_alive = 0;
-            universe[i][j].has_been_alive = 0;
             universe[i][j].liveneighbors = 0;
             universe[i][j].ycoord = i;
             universe[i][j].xcoord = j;
@@ -75,7 +95,7 @@ void soup() {
   */
 void generation() {
     for (int i = 0; i < numrows; i++) {
-        for (int j = 0; j < numrows; j++) {
+        for (int j = 0; j < numcols; j++) {
             /* If a dead cell has exactly 3 live neighbors, it comes to
                life.  If a live cell has fewer than 2 or more than 3 
                live neighbors, it dies.  This is the simplest 
@@ -83,12 +103,29 @@ void generation() {
             switch (universe[i][j].liveneighbors) {
                 case 3:
                     if (!universe[i][j].is_alive) 
-                        birth(&(universe[i][j]));
+                        universe[i][j].fate = 1;
                 case 2:
                     break;
+
                 default:
                     if (universe[i][j].is_alive) 
-                        death(&(universe[i][j]));
+                        universe[i][j].fate = -1;
+                    break;
+            }
+        }
+    }
+
+    for (int i = 0; i < numrows; i++) {
+        for (int j = 0; j < numcols; j++) {
+            switch (universe[i][j].fate) {
+                case 1:
+                    if (!universe[i][j].is_alive)
+                        birth(&universe[i][j]);
+                    break;
+
+                case -1:
+                    if (universe[i][j].is_alive)
+                        death(&universe[i][j]);
                     break;
             }
         }
@@ -111,7 +148,7 @@ void free_universe() {
   @param incremented A pointer to the cell to be incremented.
   */
 void incr_liveneighbors(struct cell *incremented) {
-    if (incremented->liveneighbors == 8)
+    if (incremented->liveneighbors >= 8)
         panic("Trying bring number of living neighbors above eight");
 
     incremented->liveneighbors++;
@@ -122,7 +159,7 @@ void incr_liveneighbors(struct cell *incremented) {
   @param decremented A pointer to the cell to be decremented.
   */
 void decr_liveneighbors(struct cell *decremented) {
-    if (decremented->liveneighbors == 0)
+    if (decremented->liveneighbors <= 0)
         panic("Trying bring number of living neighbors below zero");
 
     decremented->liveneighbors--;
@@ -149,10 +186,10 @@ void check_neighbors(struct cell *center, void (*f)(struct cell *)) {
         for (int y = -1; y < 2; y++) {
             if (!(x == 0 && y == 0)
                     && (center->xcoord + x >= 0)
-                    && (center->xcoord + x <= numcols)
+                    && (center->xcoord + x < numcols)
                     && (center->ycoord + y >= 0)
-                    && (center->ycoord + y <= numrows)) {
-                f(&(universe[center->ycoord][center->xcoord]));
+                    && (center->ycoord + y < numrows)) {
+                f(&(universe[center->ycoord + y][center->xcoord + x]));
             }
         }
     }
@@ -167,8 +204,9 @@ void check_neighbors(struct cell *center, void (*f)(struct cell *)) {
   */
 void birth(struct cell *born) {
     born->is_alive = 1;
-    born->has_been_alive++;
     check_neighbors(born, incr_liveneighbors);
+    mvaddch(born->ycoord, born->xcoord, LIVE_CHAR);
+    born->fate = 0;
 }
 
 /*
@@ -178,4 +216,6 @@ void birth(struct cell *born) {
 void death(struct cell *died) {
     died->is_alive = 0;
     check_neighbors(died, decr_liveneighbors);
+    mvaddch(died->ycoord, died->xcoord, DEAD_CHAR);
+    died->fate = 0;
 }
