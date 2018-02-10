@@ -17,6 +17,8 @@ void generation();
 
 struct cell **universe;
 
+char *buf;
+
 /**
   Execution begins here.
   @param argc the number of arguments given
@@ -39,9 +41,9 @@ int main(int argc, char **argv) {
 
     create_universe(numrows, numcols);
     initscr();
+    noecho();
 
-    mvprintw(0, 0, "Press any key to progress the simulation by one "
-            "generation, or press Q to quit.\n");
+    mvprintw(0, 0, "");
     refresh();
     char input = getch();
 
@@ -51,13 +53,14 @@ int main(int argc, char **argv) {
     refresh();
 
     do {
+        move(numrows, 0);
         input = getch();
         generation();
         refresh();
     } while (input != 'q' && input != 'Q');
 
-    delscreen();
     endwin();
+    echo();
     free_universe();
 
     printf("Thank you for playing the Game of Life.\n");
@@ -67,7 +70,8 @@ int main(int argc, char **argv) {
   Allocates and initializes memory for the universe.
   */
 void create_universe() {
-    universe = malloc(numrows * (sizeof (void *)));
+    universe = malloc(numrows * sizeof (void *));
+    buf = malloc(numrows * (numcols + 1) * sizeof (char));
     for (int i = 0; i < numrows; i++) {
         universe[i] = malloc(numcols * (sizeof (struct cell)));
     }
@@ -79,6 +83,14 @@ void create_universe() {
             universe[i][j].ycoord = i;
             universe[i][j].xcoord = j;
             universe[i][j].fate = 0;
+        }
+    }
+
+    for (int i = 0; buf[i]; i++) {
+        if (i != 0 && i % numcols == 0) {
+            buf[i] = '\n';
+        } else {
+            buf[i] = ' ';
         }
     }
 }
@@ -215,7 +227,20 @@ void birth(struct cell *born) {
     born->is_alive = 1;
     check_neighbors(born, incr_liveneighbors);
     mvaddch(born->ycoord, born->xcoord, LIVE_CHAR);
+    buf[(born->ycoord * numcols + 1) + born->xcoord] = LIVE_CHAR;
     born->fate = 0;
+}
+
+void load(int fd) {
+    char *loaded;
+    loaded = malloc(sizeof (char));
+
+    /* CHECKME */
+    int i = 0;
+    while (loaded[i] != NULL) {
+        loaded = realloc(loaded, sizeof (char) * ++i);
+        loaded[i] = read(fd, loaded, sizeof (char));
+    }
 }
 
 /*
@@ -226,5 +251,6 @@ void death(struct cell *died) {
     died->is_alive = 0;
     check_neighbors(died, decr_liveneighbors);
     mvaddch(died->ycoord, died->xcoord, DEAD_CHAR);
+    buf[(died->ycoord * numcols + 1) + died->xcoord] = DEAD_CHAR;
     died->fate = 0;
 }

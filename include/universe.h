@@ -18,7 +18,7 @@ struct cell {
 #define LIVE_CHAR '#'
 #define DEAD_CHAR '.'
 
-#define DEFAULT_ROWS 24
-#define DEFAULT_COLS 80
+#define DEFAULT_ROWS 20
+#define DEFAULT_COLS 20
 
 #endif
