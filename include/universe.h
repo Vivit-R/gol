@@ -15,7 +15,12 @@ struct cell {
     int ycoord;
 };
 
-#define LIVE_CHAR '#'
+int numrows;
+int numcols;
+
+struct cell **universe;
+
+#define LIVE_CHAR '*'
 #define DEAD_CHAR '.'
 
 #define DEFAULT_ROWS 20

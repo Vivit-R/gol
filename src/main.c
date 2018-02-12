@@ -1,23 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ncurses.h>
+#include <string.h>
 #include "universe.h"
+#include "command.h"
+
+void create_universe();
+void free_universe();
+void soup();
+void generation();
+
+void help();
+void bottom_screen_message();
+char prompt();
+char *stringprompt(char *prompt_text);
+
+void write_save_game();
+void read_saved_game();
+void iterate();
+void play();
+
+extern struct cell **universe;
 
 int numrows;
 int numcols;
 
-void create_universe();
-void free_universe();
-void panic(char *errstring);
-void soup();
-void birth(struct cell *born);
-void death(struct cell *died);
-void generation();
-
-
-struct cell **universe;
-
-char *buf;
 
 /**
   Execution begins here.
@@ -42,22 +49,59 @@ int main(int argc, char **argv) {
     create_universe(numrows, numcols);
     initscr();
     noecho();
-
-    mvprintw(0, 0, "");
-    refresh();
-    char input = getch();
+    help();
 
     clear();
     soup();
 
-    refresh();
+    int should_continue = 1;
 
-    do {
-        move(numrows, 0);
-        input = getch();
-        generation();
+    while (should_continue) {
         refresh();
-    } while (input != 'q' && input != 'Q');
+
+        switch (getch()) {
+            case CMD_SAVE:
+                write_save_game();
+                break;
+
+            case CMD_LOAD:
+                read_saved_game(); /* fall through */
+
+            case CMD_CLER: /* TODO */
+                break;
+
+            case CMD_ITER:
+                iterate();
+                break;
+
+            case CMD_PLAY:
+                play();
+                break;
+
+            case CMD_QUIT:
+                switch (prompt("Save before quitting?" 
+                            " ('y' - yes, 'n' - no, 'c' - cancel)")) {
+                    case 'y':
+                    case 'Y':
+                        write_save_game(); /* fall through */
+
+                    case 'n':
+                    case 'N':
+                        should_continue = 0;
+                        break;
+
+                    case 'c':
+                    case 'C':
+                        break;
+
+                }
+                break;
+
+            case CMD_HELP:
+                help();
+                break;
+        }
+    }
 
     endwin();
     echo();
@@ -67,190 +111,70 @@ int main(int argc, char **argv) {
 }
 
 /**
-  Allocates and initializes memory for the universe.
-  */
-void create_universe() {
-    universe = malloc(numrows * sizeof (void *));
-    buf = malloc(numrows * (numcols + 1) * sizeof (char));
-    for (int i = 0; i < numrows; i++) {
-        universe[i] = malloc(numcols * (sizeof (struct cell)));
-    }
-
-    for (int i = 0; i < numrows; i++) {
-        for (int j = 0; j < numcols; j++) {
-            universe[i][j].is_alive = 0;
-            universe[i][j].liveneighbors = 0;
-            universe[i][j].ycoord = i;
-            universe[i][j].xcoord = j;
-            universe[i][j].fate = 0;
-        }
-    }
-
-    for (int i = 0; buf[i]; i++) {
-        if (i != 0 && i % numcols == 0) {
-            buf[i] = '\n';
-        } else {
-            buf[i] = ' ';
-        }
-    }
-}
-
-/**
-  Iterates through the universe and births or kills cells randomly.
- */
-void soup() {
-    for (int i = 0; i < numrows; i++) {
-        for (int j = 0; j < numcols; j++) {
-            if (rand() % 2) {
-                if (universe[i][j].is_alive)
-                    death(&(universe[i][j]));
-                else
-                    birth(&(universe[i][j]));
-            }
-        }
-    }
-}
-
-/**
-  Runs a single generation.
-  */
-void generation() {
-    for (int i = 0; i < numrows; i++) {
-        for (int j = 0; j < numcols; j++) {
-            /* If a dead cell has exactly 3 live neighbors, it comes to
-               life.  If a live cell has fewer than 2 or more than 3 
-               live neighbors, it dies.  This is the simplest 
-               formulation of Conway's rules. */
-            switch (universe[i][j].liveneighbors) {
-                case 3:
-                    if (!universe[i][j].is_alive) 
-                        universe[i][j].fate = 1;
-                case 2:
-                    break;
-
-                default:
-                    if (universe[i][j].is_alive) 
-                        universe[i][j].fate = -1;
-                    break;
-            }
-        }
-    }
-
-    for (int i = 0; i < numrows; i++) {
-        for (int j = 0; j < numcols; j++) {
-            switch (universe[i][j].fate) {
-                case 1:
-                    if (!universe[i][j].is_alive)
-                        birth(&universe[i][j]);
-                    break;
-
-                case -1:
-                    if (universe[i][j].is_alive)
-                        death(&universe[i][j]);
-                    break;
-            }
-        }
-    }
-}
-
-/**
-  Frees all cells in universe.
-  */
-void free_universe() {
-    for (int i = numrows - 1; i >= 0; i--) {
-        free(universe[i]);
-    }
-    free(universe);
-}
-
-
-/**
-  Increments the number of live neighbors.
-  @param incremented A pointer to the cell to be incremented.
-  */
-void incr_liveneighbors(struct cell *incremented) {
-    if (incremented->liveneighbors >= 8)
-        panic("Trying bring number of living neighbors above eight");
-
-    incremented->liveneighbors++;
-}
-
-/**
-  Decrements the number of live neighbors.
-  @param decremented A pointer to the cell to be decremented.
-  */
-void decr_liveneighbors(struct cell *decremented) {
-    if (decremented->liveneighbors <= 0)
-        panic("Trying bring number of living neighbors below zero");
-
-    decremented->liveneighbors--;
-}
-
-
-/**
   Delet this
   */
 void panic(char *errstring) {
     printf("ERROR: %s\n", errstring);
-    int i = 1 / 0;
+    exit(1);
 }
 
 /**
-  Checks the bordering cells and calls a given void function on them.
-  It feels so weird to be paramtereizing functions in C, but also
-  pretty cool.
-  @param center the center cell whose neighbors we are looking at
-  @param f a pointer to a function to call on those neighbors.
+  Saves the game state to a text file.
   */
-void check_neighbors(struct cell *center, void (*f)(struct cell *)) {
-    for (int x = -1; x < 2; x++) {
-        for (int y = -1; y < 2; y++) {
-            if (!(x == 0 && y == 0)
-                    && (center->xcoord + x >= 0)
-                    && (center->xcoord + x < numcols)
-                    && (center->ycoord + y >= 0)
-                    && (center->ycoord + y < numrows)) {
-                f(&(universe[center->ycoord + y][center->xcoord + x]));
-            }
+void write_save_game() {
+    char *readbuf;
+    char *writebuf;
+    char *filename;
+    FILE *written;
+
+    chtype *curschar;
+    curschar = malloc(sizeof (chtype) * numcols);
+    
+    do {
+        filename = stringprompt("Please enter a filename.");
+        written = fopen(filename, "w");
+        if (written == NULL) {
+            prompt("That file could not be opened for writing!");
         }
-    }
-}
+    } while (written != NULL);
 
-/* Whenever a cell dies or comes to life, the cells around it all have
-   their liveneighbors fields updated accordingly. */
+    free(filename);
+
+    readbuf = NULL;
+    writebuf = NULL;
+    readbuf = malloc(sizeof (char) * numcols);
+
+    for (int i = 0; i < numrows; i++) {
+        writebuf = realloc(writebuf, sizeof (char) * numcols * (i + 1));
+        move(i, 0);
+        inchstr(curschar);
+        int j = 0;
+
+        do {
+            readbuf[j] = (char) (curschar[j] & A_CHARTEXT);
+            j++;
+        } while (curschar[j] != '\0');
+        readbuf[j] = '\0';
+
+        strcat(writebuf, readbuf);
+        strcat(writebuf, "\n");
+    }
+    free(readbuf);
+    
+    fwrite(writebuf, sizeof (char), strlen(writebuf), written);
+    free(writebuf);
+    fclose(written);
+}
 
 /**
-  A cell comes to life!
-  @param *born a pointer to the cell that will come to life.
+  Loads and resumes a saved game.
   */
-void birth(struct cell *born) {
-    born->is_alive = 1;
-    check_neighbors(born, incr_liveneighbors);
-    mvaddch(born->ycoord, born->xcoord, LIVE_CHAR);
-    buf[(born->ycoord * numcols + 1) + born->xcoord] = LIVE_CHAR;
-    born->fate = 0;
+void read_saved_game() {
+    
 }
 
-void load(int fd) {
-    char *loaded;
-    loaded = malloc(sizeof (char));
-
-    /* CHECKME */
-    int i = 0;
-    while (loaded[i] != NULL) {
-        loaded = realloc(loaded, sizeof (char) * ++i);
-        loaded[i] = read(fd, loaded, sizeof (char));
-    }
+void iterate() {
 }
 
-/*
-  A cell dies...
-  @param *died a pointer to the cell that will come to life.
-  */
-void death(struct cell *died) {
-    died->is_alive = 0;
-    check_neighbors(died, decr_liveneighbors);
-    mvaddch(died->ycoord, died->xcoord, DEAD_CHAR);
-    buf[(died->ycoord * numcols + 1) + died->xcoord] = DEAD_CHAR;
-    died->fate = 0;
+void play() {
 }
