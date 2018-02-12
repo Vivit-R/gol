@@ -15,10 +15,8 @@ struct cell {
     int ycoord;
 };
 
-int numrows;
-int numcols;
-
 struct cell **universe;
+char **buffer;
 
 #define LIVE_CHAR '*'
 #define DEAD_CHAR '.'

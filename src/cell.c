@@ -8,8 +8,8 @@ void decr_liveneighbors(struct cell *decremented);
 void incr_liveneighbors(struct cell *incremented);
 void check_neighbors(struct cell *center, void (*f)(struct cell *));
 
-extern int numrows;
-extern int numcols;
+extern const int numrows;
+extern const int numcols;
 
 extern struct cell **universe;
 
@@ -24,6 +24,7 @@ void birth(struct cell *born) {
     born->is_alive = 1;
     check_neighbors(born, incr_liveneighbors);
     mvaddch(born->ycoord, born->xcoord, LIVE_CHAR);
+    buffer[born->ycoord][born->xcoord] = LIVE_CHAR;
     born->fate = 0;
 }
 
@@ -35,6 +36,7 @@ void death(struct cell *died) {
     died->is_alive = 0;
     check_neighbors(died, decr_liveneighbors);
     mvaddch(died->ycoord, died->xcoord, DEAD_CHAR);
+    buffer[died->ycoord][died->xcoord] = DEAD_CHAR;
     died->fate = 0;
 }
 

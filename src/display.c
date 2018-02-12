@@ -14,22 +14,23 @@ int numhelpcols;
 int totalnumhelpcols;
 int numhelprows;
 
+extern const int numrows;
+extern const int numcols;
+
 /* Defining the text for the help screen */
 static const char helpstring[] = { 
     "Welcome to the Game of Life.\n"
     "Available commands:\n\n"
 
     "\'s\' - write current state to a text file\n"
-    "\'l\' - read a state from a text file\n"
-    "\'S\' - end the life session and start a new one\n"
+//    "\'l\' - read a state from a text file\n"
 
-    "\' \' - run one generation\n"
-    "\'r\' - run multiple generations\n"
-    "\'R\' - run generations until a key is pressed\n"
+    "\'.\' - run one step\n"
+    "\'r\' - run multiple steps\n"
     "\'q\' - quit\n"
     "\'?\' - show this help screen\n\n"
 
-    "Press any key to continue."
+    "Press any key to continue.\n"
 };
 
 /**
@@ -57,11 +58,12 @@ void help() {
     totalnumhelpcols += 4;  /* for padding */
     numhelprows += 2;  /* "   "       */
 
-    helpwin = newwin(numhelprows, totalnumhelpcols, 1, 1);
+    helpwin = newwin(numhelprows, totalnumhelpcols+2, 1, 1);
 
     printhelp();
-    wrefresh(helpwin);
     wgetch(helpwin);
+    wclear(helpwin);
+    wrefresh(helpwin);
     delwin(helpwin);
 }
 
@@ -72,6 +74,7 @@ void padline() {
     for (int i = 0; i < totalnumhelpcols; i++) {
         waddch(helpwin, '#');
     }
+    waddch(helpwin, '\n');
 }
 
 /**
@@ -80,20 +83,23 @@ void padline() {
 void printhelp() {
 
     padline();
-    wprintw(helpwin, "# ");
-    int charssoffar = 2;
+    int charssofar = 2;
 
     for (int i = 0; helpstring[i] != '\0'; i++) {
-        if (helpstring[i] == '\n') {
-            for (int j = charssoffar; j < numhelpcols - 1; j++) {
+        if (charssofar == 2) {
+            wprintw(helpwin, "# ");
+        }
+
+        if (helpstring[i] == '\n' && helpstring+i+1 != NULL) {
+            for (int j = charssofar; j < totalnumhelpcols - 1; j++) {
                 waddch(helpwin, ' ');
             }
-            wprintw(helpwin, "#\n# ");
-            charssoffar = 2;
+            wprintw(helpwin, "#");
+            charssofar = 2;
         } else {
-            charssoffar++;
-            waddch(helpwin, helpstring[i]);
+            charssofar++;
         }
+        waddch(helpwin, helpstring[i]);
     }
 
     padline();
@@ -105,7 +111,7 @@ void printhelp() {
   */
 void bottom_screen_message(char *msg) {
     clearmsg();
-    mvprintw(numhelprows + 1, 0, msg);
+    mvprintw(numrows, 0, msg);
     refresh();
 }
 
@@ -113,7 +119,7 @@ void bottom_screen_message(char *msg) {
   Clears the message displayed.
   */
 void clearmsg() {
-    move(numhelprows + 1, 0);
+    move(numrows, 0);
     clrtoeol();
 }
 
@@ -135,8 +141,8 @@ char prompt(char *prompt_text) {
 char *stringprompt(char *prompt_text) {
     char *ret;
     ret = malloc(128 * sizeof (char));
+    prompt(prompt_text);
     
-   
     clearmsg();
     echo();
     bottom_screen_message(">");

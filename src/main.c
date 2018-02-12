@@ -8,10 +8,10 @@
 void create_universe();
 void free_universe();
 void soup();
-void generation();
+void step();
 
 void help();
-void bottom_screen_message();
+void clearmsg();
 char prompt();
 char *stringprompt(char *prompt_text);
 
@@ -21,6 +21,7 @@ void iterate();
 void play();
 
 extern struct cell **universe;
+extern char **buffer;
 
 int numrows;
 int numcols;
@@ -31,9 +32,7 @@ int numcols;
   @param argc the number of arguments given
   @param argv the arguments given
   */
-int main(int argc, char **argv) {
-    numrows = DEFAULT_ROWS;
-    numcols = DEFAULT_COLS;
+int main(int argc, const char **argv) {
 
     switch (argc) {
         case 3:
@@ -43,6 +42,8 @@ int main(int argc, char **argv) {
             break;
 
         default:
+            numrows = DEFAULT_ROWS;
+            numcols = DEFAULT_COLS;
             break;
     }
 
@@ -58,24 +59,23 @@ int main(int argc, char **argv) {
 
     while (should_continue) {
         refresh();
+        char cmd = getch();
 
-        switch (getch()) {
+        switch (cmd) {
             case CMD_SAVE:
                 write_save_game();
                 break;
 
-            case CMD_LOAD:
-                read_saved_game(); /* fall through */
-
-            case CMD_CLER: /* TODO */
+            case CMD_STEP:
+                step();
                 break;
+
+/*            case CMD_LOAD:
+                read_saved_game(); // fall through 
+                */
 
             case CMD_ITER:
                 iterate();
-                break;
-
-            case CMD_PLAY:
-                play();
                 break;
 
             case CMD_QUIT:
@@ -88,10 +88,12 @@ int main(int argc, char **argv) {
                     case 'n':
                     case 'N':
                         should_continue = 0;
+                        clearmsg();
                         break;
 
                     case 'c':
                     case 'C':
+                        clearmsg();
                         break;
 
                 }
@@ -99,6 +101,7 @@ int main(int argc, char **argv) {
 
             case CMD_HELP:
                 help();
+                refresh();
                 break;
         }
     }
@@ -122,58 +125,56 @@ void panic(char *errstring) {
   Saves the game state to a text file.
   */
 void write_save_game() {
-    char *readbuf;
-    char *writebuf;
     char *filename;
     FILE *written;
 
-    chtype *curschar;
-    curschar = malloc(sizeof (chtype) * numcols);
-    
     do {
         filename = stringprompt("Please enter a filename.");
-        written = fopen(filename, "w");
+        written = fopen(filename, "a");
         if (written == NULL) {
             prompt("That file could not be opened for writing!");
         }
-    } while (written != NULL);
+    } while (written == NULL);
 
     free(filename);
-
-    readbuf = NULL;
-    writebuf = NULL;
-    readbuf = malloc(sizeof (char) * numcols);
-
-    for (int i = 0; i < numrows; i++) {
-        writebuf = realloc(writebuf, sizeof (char) * numcols * (i + 1));
-        move(i, 0);
-        inchstr(curschar);
-        int j = 0;
-
-        do {
-            readbuf[j] = (char) (curschar[j] & A_CHARTEXT);
-            j++;
-        } while (curschar[j] != '\0');
-        readbuf[j] = '\0';
-
-        strcat(writebuf, readbuf);
-        strcat(writebuf, "\n");
-    }
-    free(readbuf);
     
-    fwrite(writebuf, sizeof (char), strlen(writebuf), written);
-    free(writebuf);
+    for (int i = 0; i < numrows; i++) {
+        fprintf(written, "%s%s", buffer[i], "\n");
+    }
     fclose(written);
 }
 
 /**
   Loads and resumes a saved game.
   */
-void read_saved_game() {
+void read_saved_game() { /*
+    clear();
+    refresh();
+    free_universe();
+
+    char *filename;
+    FILE *read;
+
+    do {
+        filename = stringprompt("Please enter a filename.");
+        read = fopen(filename, "r");
+        if (written == NULL) {
+            prompt("That file could not be opened for reading!");
+        }
+    } while (written == NULL);
+
+    do {
+        filename = stringprompt(fgets()
+    }
+*/
     
 }
 
 void iterate() {
+    int gens = atoi(stringprompt("How many generations would you like to run?"));
+    for (int i = 0; i < gens; i++) {
+        step();
+    }
 }
 
 void play() {
