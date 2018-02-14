@@ -17,6 +17,8 @@ char *stringprompt(char *prompt_text);
 
 void write_save_game();
 void read_saved_game();
+void birth();
+void bottom_screen_message();
 void iterate();
 void play();
 
@@ -36,9 +38,9 @@ int main(int argc, const char **argv) {
 
     switch (argc) {
         case 3:
-            numcols = atoi(argv[1]);
+            numcols = atoi(argv[2]);
         case 2:
-            numrows = atoi(argv[0]);
+            numrows = atoi(argv[1]);
             break;
 
         default:
@@ -70,9 +72,9 @@ int main(int argc, const char **argv) {
                 step();
                 break;
 
-/*            case CMD_LOAD:
-                read_saved_game(); // fall through 
-                */
+            case CMD_LOAD:
+                read_saved_game();
+                break;
 
             case CMD_ITER:
                 iterate();
@@ -147,9 +149,8 @@ void write_save_game() {
 /**
   Loads and resumes a saved game.
   */
-void read_saved_game() { /*
+void read_saved_game() {
     clear();
-    refresh();
     free_universe();
 
     char *filename;
@@ -158,16 +159,89 @@ void read_saved_game() { /*
     do {
         filename = stringprompt("Please enter a filename.");
         read = fopen(filename, "r");
-        if (written == NULL) {
+        if (read == NULL) {
             prompt("That file could not be opened for reading!");
         }
-    } while (written == NULL);
+    } while (read == NULL);
 
-    do {
-        filename = stringprompt(fgets()
+    int rowcount = 0;
+    int colcount = 0;
+    int done = 0;
+
+    int newline_previous = 0;
+    for (int i = 0; !done; i++) {
+        switch (fgetc(read)) {
+            case '\n':
+                rowcount++;
+                if (i > colcount) {
+                    colcount = i;
+                }
+                newline_previous = 1;
+                break;
+
+            case EOF:
+                if (!newline_previous) {
+                    colcount++;
+                }
+                done = 1;
+                break;
+            default:
+                newline_previous = 0;
+        }
     }
-*/
+
+    numrows = rowcount;
+    numcols = colcount;
+
+    create_universe();
+
+    fseek(read, 0, SEEK_SET);
+
+    done = 0;
+    int currow = 0;
+    int curcol = 0;
+    int errchar = 0;
+    char readchar;
     
+    for (int i = 0; !done; i++) {
+
+        /* can't happen */
+        if (currow > numrows || curcol > numcols) {
+            bottom_screen_message("Dimension mismatch reading file.");
+            break;
+        }
+
+        readchar = fgetc(read);
+
+        switch (readchar) {
+            case '\n':
+                move(++currow, 0);
+                curcol = 0;
+                break;
+
+            case LIVE_CHAR:
+                birth(&(universe[currow][curcol]));
+            case DEAD_CHAR:
+                addch(readchar);
+            case ' ':
+                move(currow, ++curcol);
+                break;
+
+            case EOF:
+                done = 1;
+                break;
+
+            default:
+                errchar++;
+                break;
+        }
+    }
+
+    if (errchar) {
+        bottom_screen_message("I found some characters in that file "
+                "that I didn't understand, but here's what I did "
+                "understand.");
+    }
 }
 
 void iterate() {

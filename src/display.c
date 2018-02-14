@@ -141,12 +141,12 @@ char prompt(char *prompt_text) {
 char *stringprompt(char *prompt_text) {
     char *ret;
     ret = malloc(128 * sizeof (char));
-    prompt(prompt_text);
-    
-    clearmsg();
+    bottom_screen_message(prompt_text);
+    mvprintw(numrows+1, 0, ">");
     echo();
-    bottom_screen_message(">");
     getnstr(ret, 32);
+    clrtoeol();
+    clearmsg();
 
     ret = realloc(ret, sizeof (char) * (strlen(ret) + 1));
 
