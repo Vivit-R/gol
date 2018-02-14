@@ -130,13 +130,39 @@ void write_save_game() {
     char *filename;
     FILE *written;
 
-    do {
-        filename = stringprompt("Please enter a filename.");
-        written = fopen(filename, "a");
+    int done = 0;
+
+    filename = stringprompt("Please enter a filename.");
+    written = fopen(filename, "r");
+    if (written == NULL) {
+        written = fopen(filename, "w");
+
         if (written == NULL) {
-            prompt("That file could not be opened for writing!");
+            bottom_screen_message("That file could not be "
+                    "opened for writing!");
+            return;
         }
-    } while (written == NULL);
+    } else {
+        fclose(written);
+        while (!done) {
+            switch (prompt("That file already exists. "
+                       "Do you want to overwrite it? (y/n)")) {
+                case 'n':
+                    bottom_screen_message("Aborted.");
+                    return;
+
+                case 'y':
+                    done = 1;
+
+                default:
+                    break;
+            }
+        }
+        written = fopen(filename, "w");
+        done = 0;
+
+    }
+
 
     free(filename);
     
@@ -150,33 +176,38 @@ void write_save_game() {
   Loads and resumes a saved game.
   */
 void read_saved_game() {
-    clear();
-    free_universe();
-
     char *filename;
     FILE *read;
 
-    do {
-        filename = stringprompt("Please enter a filename.");
-        read = fopen(filename, "r");
-        if (read == NULL) {
-            prompt("That file could not be opened for reading!");
-        }
-    } while (read == NULL);
+    filename = stringprompt("Please enter a filename.");
+    read = fopen(filename, "r");
+    if (read == NULL) {
+        bottom_screen_message("That file could not be opened for "
+                "reading!");
+        return;
+    }
+
+    free_universe();
+    char readchar;
 
     int rowcount = 0;
     int colcount = 0;
     int done = 0;
+    int rowlength = 0;
 
     int newline_previous = 0;
+
+    /* Measuring the dimensions of the file */
     for (int i = 0; !done; i++) {
-        switch (fgetc(read)) {
+        readchar = fgetc(read);
+        switch (readchar) {
             case '\n':
-                rowcount++;
-                if (i > colcount) {
-                    colcount = i;
+                if (rowlength > colcount) {
+                    colcount = rowlength;
                 }
+                rowlength = 0;
                 newline_previous = 1;
+                rowcount++;
                 break;
 
             case EOF:
@@ -186,12 +217,17 @@ void read_saved_game() {
                 done = 1;
                 break;
             default:
+                rowlength++;
                 newline_previous = 0;
+                break;
         }
     }
 
     numrows = rowcount;
     numcols = colcount;
+
+    clear();
+    refresh();
 
     create_universe();
 
@@ -201,10 +237,8 @@ void read_saved_game() {
     int currow = 0;
     int curcol = 0;
     int errchar = 0;
-    char readchar;
     
     for (int i = 0; !done; i++) {
-
         /* can't happen */
         if (currow > numrows || curcol > numcols) {
             bottom_screen_message("Dimension mismatch reading file.");
@@ -221,10 +255,14 @@ void read_saved_game() {
 
             case LIVE_CHAR:
                 birth(&(universe[currow][curcol]));
+                curcol++;
+                refresh();
+                break;
+
             case DEAD_CHAR:
-                addch(readchar);
             case ' ':
-                move(currow, ++curcol);
+                curcol++;
+                refresh();
                 break;
 
             case EOF:
